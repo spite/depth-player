@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Depth data viewer</title>
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link href='http://fonts.googleapis.com/css?family=Roboto+Condensed:400,700,300' rel='stylesheet' type='text/css'>
+		<link href='css/styles.css' rel='stylesheet' type='text/css'>
+		<script src="js/LensBlurDepthExtractor.js" ></script>
+		<script src="js/three.min.js" ></script>
+		<script src="js/ShaderLoader.js" ></script>
+		<script src="js/THREE.OBJExporter.js" ></script>
+		<script src="js/StackBlur.js" ></script>
+		<script src="js/zip/zip.js" ></script>
+	</head>
+	<body>
+
+	<div id="fb-root"></div>
+	<script>(function(d, s, id) {
+		var js, fjs = d.getElementsByTagName(s)[0];
+		if (d.getElementById(id)) return;
+		js = d.createElement(s); js.id = id;
+		js.src = "//connect.facebook.net/en_GB/all.js#xfbml=1";
+		fjs.parentNode.insertBefore(js, fjs);
+	}(document, 'script', 'facebook-jssdk'));</script>
+
+	<div class="title ui" >
+		<br/><br/>
+		<div>
+			<a href="https://twitter.com/share" class="twitter-share-button" data-via="thespite" data-lang="en">Tweet</a>
+			<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="https://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+			
+			<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+			<div class="g-plusone" data-size="medium" data-annotation="bubble"></div>
+			
+			<div class="fb-like" data-href="http://www.clicktorelease.com/code/depth-player/" data-width="The pixel width of the plugin" data-height="The pixel height of the plugin" data-colorscheme="light" data-layout="button_count" data-action="like" data-show-faces="true" data-send="false"></div>
+		</div>
+
+	</div>
+
+	<div id="panel" class="ui">
+
+			<a href="https://github.com/spite/android-lens-blur-depth-extractor"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/652c5b9acfaddf3a9c326fa6bde407b87f7be0f4/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f6f72616e67655f6666373630302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_orange_ff7600.png"></a>
+
+		<div>
+			<h1>About</h1>
+			<p>Check out the GitHub project here:<br/><a class="inside" href="https://github.com/spite/android-lens-blur-depth-extractor" >android-lens-blur-depth-extractor</a>.</p>
+			<p>Code by Jaume Sánchez <a class="inside" href="http://www.twitter.com/thespite" rel="external">@thespite</a> using <a class="inside" href="http://www.threejs.org" rel="external">three.js</a><br/>and Kinect code by <a class="inside" href="http://www.twitter.com/kcimc" rel="external">@kcimc</a> and <a class="inside" href="http://www.twitter.com/mrdoob" rel="external">@mrdoob</a>.
+		</div>
+		<div>
+			<h1>Instructions</h1>
+			<p>Upload a file captured with the new Android Lens Blur application, and see the model in 3D.</p>
+			<p>Click and drag to rotate, mousewheel to zoom / Touch and drag to rotate, pinch to zoom.</p>
+		</div>
+		<div>
+			<h1>Source Lens Blur image</h1>
+			<p>Select one of these images:</p>
+			<ul id="imageList"></ul>
+			<p>or upload your own:</p>
+			<input type="file" id="uploadFile" name="uploadFile" class="custom-file-input"/>
+		</div>
+		<div>
+			<h1>Render mode</h1>
+			<p><input type="button" data-rendermode="solid" value="Solid" class="renderMode button"></input> <input type="button" data-rendermode="point" value="Point cloud" class="renderMode button"></input> <input type="button" data-rendermode="wireframe" value="Wireframe" class="renderMode button"></input></p>
+		</div>
+		<div>
+			<h1>Actions</h1>
+			<p><a class="button" href="#" id="exportOBJ" >Download .obj</a> <a class="button" href="#" id="uploadSketchfab" >Upload to Sketchfab</a> <!--<a class="button" href="#" id="fullScreen" >Go fullscreen</a> <a class="button" href="#" id="takeSnapshot" >Snapshot</a>--></p>
+		</div>
+		<div>
+			<h1>Settings</h1>
+			<p>You'll have to reload the model for the changes to be effective.</p>
+			<ul>
+				<li>Smooth mesh: <input type="range" id="smoothRadius" min="0" max="100"></input></li>
+				<li>Quad size: <input type="range" id="quadSize" min="1" max="10"></input></li>
+				<li>Point size: <input type="range" id="pointSize" min="1" max="5"></input></li>
+				<li>Sketchfab token: <input type="text" id="sketchfabToken" ></input></li>
+			</li>
+		</div>
+
+	</div>
+
+	<div id="container" ></div>
+
+	<h1 class="title">Depth Data Viewer</h1>
+
+	<div id="loading">
+		<p>Loading...</p>
+		<div id="progress" ></div>
+	</div>
+	<div id="message">
+		<p></p>
+		<a href="#" class="close inside">Close</a>
+	</div>
+
+<script>
+
+'use strict';
+
+zip.workerScriptsPath = "js/zip/";
+
+var settings = {
+	smoothRadius: 10,
+	quadSize: 4,
+	pointSize: 3,
+	sketchfabToken: ''
+};
+
+function loadSettings() {
+
+	if( localStorage ) {
+		if( localStorage.smoothRadius ) settings.smoothRadius = parseFloat( localStorage.smoothRadius );
+		if( localStorage.quadSize ) settings.quadSize = parseFloat( localStorage.quadSize );
+		if( localStorage.pointSize ) settings.pointSize = parseFloat( localStorage.pointSize );
+		if( localStorage.sketchfabToken ) settings.sketchfabToken = localStorage.sketchfabToken;			
+	}
+
+	
+	if( settings.smoothRadius < 0 ) settings.smoothRadius = 0;
+	if( settings.smoothRadius > 100 ) settings.smoothRadius = 100;
+	if( settings.quadSize < 1 ) settings.quadSize = 1;
+	if( settings.quadSize > 10 ) settings.quadSize = 10;
+	if( settings.pointSize < 1 ) settings.pointSize = 1;
+	if( settings.pointSize > 5 ) settings.pointSize = 5;
+
+	for( var j in settings ) {
+		var el = document.getElementById( j );
+		el.value = settings[ j ];
+
+		var span = document.createElement( 'span' );
+		if( el.getAttribute( 'type' ) == 'range' ) {
+			el.parentNode.insertBefore( span, el.nextSibling );
+		}
+		span.textContent = el.value;
+
+		( function( s ) { el.addEventListener( 'change', function( e ) {
+
+			var id = this.getAttribute( 'id' );
+
+			if( id == 'smoothRadius' ) {
+				if( this.value < 0 ) this.value = 0;
+				if( this.value > 100 ) this.value = 100;
+			}
+
+			if( id == 'quadSize' ) {
+				if( this.value < 1 ) this.value = 1;
+				if( this.value > 10 ) this.value = 10;
+			}
+
+			if( id == 'pointSize' ) {
+				if( this.value < 1 ) this.value = 1;
+				if( this.value > 5 ) this.value = 5;
+			}
+
+			settings[ id ] = this.value;
+			s.textContent = this.value;
+
+			saveSettings();
+		} ); } )( span );
+	}
+
+}
+
+function setLoadingText( text ) {
+	loading.querySelector( 'p' ).textContent = text;
+}
+
+function setProgress( p ) {
+	loading.querySelector( '#progress' ).style.width = ( loading.clientWidth * p ) + 'px';
+}
+
+function showLoading( show ) {
+
+	setProgress( 0 );
+	if( show ) loading.style.opacity = 1;
+	else loading.style.opacity = 0;
+
+}
+
+function showMessage( msg ) {
+
+	message.querySelector( 'p' ).innerHTML = msg;
+	message.style.opacity = 1;
+
+}
+
+function saveSettings() {
+
+	for( var j in settings ) {
+		localStorage[ j ] = settings[ j ];
+	}
+
+}
+
+loadSettings();
+
+var images = [
+	'window',
+	'wood',
+	'yamasa-maneki-neko',
+	'greek-helmet',
+	'jules'
+];
+
+var ui = [].slice.call( document.querySelectorAll( '.ui' ) );
+
+var container = document.getElementById( 'container' );
+var loading = document.getElementById( 'loading' );
+var message = document.getElementById( 'message' );
+message.querySelector( 'a' ).addEventListener( 'click', function( e ) {
+	message.style.opacity = 0;
+} );
+
+var d = new DepthReader();
+
+var imgSrc = new Image();
+
+window.addEventListener( 'load', init );
+
+function init() {
+
+	var renderMode = 1;
+	var material, meshSolid, meshPoint;
+	var renderer, scene, camera, fov = 70, nFov = fov, distance = 500, nDistance = distance;
+	var displacement = 0, nDisplacement = displacement;
+
+	var isUserInteracting = false, isUserPinching = false;
+	var onPointerDownPointerX, onPointerDownPointerY, onPointerDownLon, onPointerDownLat;
+	var lon = 90, lat = 0, nLon = lon, nLat = lat;
+	var oDist, oFov, adjustment = 0;
+
+	scene = new THREE.Scene();
+
+	camera = new THREE.PerspectiveCamera( fov, window.innerWidth / window.innerHeight, .1, 1000 );
+	camera.target = new THREE.Vector3( 0, 0, 0 );
+	camera.position.y = 500;
+	scene.add( camera );
+
+	renderer = new THREE.WebGLRenderer( { antialias: true, alpha: false } );
+	renderer.setClearColor( 0, 0 );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.sortObjects = true;
+
+	container.appendChild( renderer.domElement );
+
+	window.addEventListener( 'resize', onResize );
+
+	container.addEventListener( 'mousedown', onContainerMouseDown, false );
+	container.addEventListener( 'mousemove', onContainerMouseMove, false );
+	container.addEventListener( 'mouseup', onContainerMouseUp, false );
+	
+	container.addEventListener( 'touchstart', onTouchStart, false );
+	container.addEventListener( 'touchmove', onTouchMove, false );
+	container.addEventListener( 'touchend', onTouchEnd, false );
+	container.addEventListener( 'touchcancel', onTouchEnd, false );
+	
+	container.addEventListener( 'mousewheel', onContainerMouseWheel, false );
+	container.addEventListener( 'DOMMouseScroll', onContainerMouseWheel, false); 
+
+	var modeButtons = [].slice.call( document.querySelectorAll( '.renderMode' ) );
+	modeButtons.forEach( function( el ) {
+		el.addEventListener( 'click', function( ev ) {
+			switch( el.getAttribute( 'data-rendermode' ) ) {
+				case 'solid':
+				renderMode = 1;
+				break;
+				case 'point': 
+				renderMode = 2;
+				break;
+				case 'wireframe':
+				renderMode = 3;
+				break;
+			}
+			ev.preventDefault();
+		});
+	});
+
+	function onResize() {
+
+		var w = container.clientWidth,
+			h = container.clientHeight;
+
+		renderer.setSize( w, h );
+
+		camera.aspect = w / h;
+		camera.updateProjectionMatrix();
+
+	}
+
+	function onContainerMouseDown( event ) {
+		
+		event.preventDefault();
+
+		startInteraction();
+		isUserInteracting = true;
+		var el = document.querySelectorAll( '.hide' );
+		for( var j = 0; j < el.length; j++ ) {
+			el[ j ].style.opacity = 0;
+			el[ j ].style.pointerEvents = 'none';
+		}
+		
+		onPointerDownPointerX = event.clientX;
+		onPointerDownPointerY = event.clientY;
+
+		onPointerDownLon = lon;
+		onPointerDownLat = lat;
+		
+	}
+	
+	function onContainerMouseMove( event ) {
+
+		event.preventDefault();
+		
+		var lookSpeed = .15;
+		var f = fov / 500;
+		if( navigator.pointer && navigator.pointer.isLocked ) {
+			nLon = event.webkitMovementX * f;
+			nLat = event.webkitMovementY * f;
+		} else if ( document.mozPointerLockElement == container ){
+			if( Math.abs( event.mozMovementX ) < 100 || Math.abs( event.mozMovementY ) < 100 ) { 
+				nLon -= event.mozMovementX * f;
+				nLat -= event.mozMovementY * f;
+			}
+		} else {
+			if ( isUserInteracting ) {
+				var dx = ( onPointerDownPointerX - event.clientX ) * f;
+				var dy = ( onPointerDownPointerY - event.clientY ) * f;
+				nLon = dx + onPointerDownLon;
+				nLat = dy + onPointerDownLat;
+			}
+		}
+	}
+
+	function onContainerMouseUp( event ) {
+
+		event.preventDefault();
+		endInteraction();
+		isUserInteracting = false;
+		var el = document.querySelectorAll( '.hide' );
+		for( var j = 0; j < el.length; j++ ) {
+			el[ j ].style.opacity = 1;
+			el[ j ].style.pointerEvents = 'auto';
+		}
+
+	}
+	
+	function onContainerMouseWheel( event ) {
+		
+		event = event ? event : window.event;
+		//nFov = fov - ( event.detail ? event.detail * -5 : event.wheelDelta / 8 );
+		nDistance = nDistance - ( event.detail ? event.detail * -5 : event.wheelDelta / 8 );
+
+	}
+
+	function onTouchStart( event ) {
+
+		startInteraction();
+		isUserInteracting = true;
+		var el = document.querySelectorAll( '.hide' );
+		for( var j = 0; j < el.length; j++ ) {
+			el[ j ].style.opacity = 0;
+			el[ j ].style.pointerEvents = 'none';
+		}
+
+		if( event.touches.length == 2 ) {
+
+			var t = event.touches;
+			oDist = Math.sqrt(
+					Math.pow( t[ 0 ].clientX - t[ 1 ].clientX, 2 ) +
+					Math.pow( t[ 0 ].clientY - t[ 1 ].clientY, 2 ) );
+			oFov = nFov;
+			
+			isUserPinching = true;
+
+		} else {
+
+		  var t = event.touches[ 0 ];
+		
+		  onPointerDownPointerX = t.clientX;
+		  onPointerDownPointerY = t.clientY;
+
+		  onPointerDownLon = lon;
+		  onPointerDownLat = lat;
+
+		}
+
+	  event.preventDefault();
+	    
+	}
+
+	function onTouchMove( event ) {
+
+		if( event.touches.length == 2 ) {
+
+			var t = event.touches;
+			var dist = Math.sqrt(
+			Math.pow( t[ 0 ].clientX - t[ 1 ].clientX, 2 ) +
+			Math.pow( t[ 0 ].clientY - t[ 1 ].clientY, 2 ) );
+
+			nFov = oFov + .1 * ( oDist - dist );
+
+		} else {
+
+		  var t = event.touches[ 0 ];
+		  nLon = .1 * ( t.clientX - onPointerDownPointerX ) + onPointerDownLon;
+		  nLat = .1 * ( t.clientY - onPointerDownPointerY ) + onPointerDownLat;
+
+		 }
+
+	  event.preventDefault();
+
+	}
+
+	function onTouchEnd( event ) {
+
+		endInteraction();
+		event.preventDefault();
+		isUserInteracting = false;
+		var el = document.querySelectorAll( '.hide' );
+		for( var j = 0; j < el.length; j++ ) {
+			el[ j ].style.opacity = 1;
+			el[ j ].style.pointerEvents = 'auto';
+		}
+
+	}
+
+	function startInteraction() {
+		ui.forEach( function( e ) { e.classList.add( 'hidden' ) } );
+	}
+
+	function endInteraction() {
+		ui.forEach( function( e ) { e.classList.remove( 'hidden' ) } );
+	}
+
+	function render() {
+
+		requestAnimationFrame( render );
+
+		if( nDistance < camera.near ) nDistance = camera.near;
+
+		lon += ( nLon - lon ) * .1;
+		lat += ( nLat - lat ) * .1;
+		fov += ( nFov - fov ) * .1; 
+		distance += ( nDistance - distance ) * .1; 
+		displacement += ( nDisplacement - displacement ) * .1; 
+
+		camera.fov = fov;
+		camera.updateProjectionMatrix();
+
+		if( meshPoint ) {
+			meshPoint.scale.z = adjustment * displacement;
+			meshPoint.visible = ( renderMode == 2 );
+		}
+		if( meshSolid ) {
+			meshSolid.scale.z = adjustment * displacement;
+			meshSolid.visible = ( renderMode == 1 || renderMode == 3 );
+			meshSolid.material.wireframe = ( renderMode == 3 );
+		}
+
+		lat = Math.max( - 85, Math.min( 85, lat ) );
+		var phi = ( 90 - lat ) * Math.PI / 180;
+		var theta = lon * Math.PI / 180;
+
+		camera.position.x = distance * Math.sin( phi ) * Math.cos( theta );
+		camera.position.y = distance * Math.cos( phi );
+		camera.position.z = distance * Math.sin( phi ) * Math.sin( theta );
+
+		camera.lookAt( camera.target );
+
+		renderer.render( scene, camera );
+
+	}
+
+	function setImg() {
+
+		if( meshSolid ) { scene.remove( meshSolid ); }
+		if( meshPoint ) { scene.remove( meshPoint ); }
+
+		displacement = nDisplacement = 0;
+
+		var img = new Image();
+		img.onload = function() {
+
+			imgSrc.onload = function() {
+
+				var s = 6;
+				var w = Math.round( img.width / s ),
+					h = Math.round( img.height / s );
+
+				var canvas = document.createElement( 'canvas' ),
+					ctx = canvas.getContext( '2d' );
+
+				canvas.width = img.width;
+				canvas.height = img.height;
+				ctx.drawImage( img, 0, 0 );
+
+				stackBlurCanvasRGB( canvas, 0, 0, canvas.width, canvas.height, parseInt( settings.smoothRadius, 10 ) );
+
+				var imageData = ctx.getImageData( 0, 0, canvas.width, canvas.height );
+				var p = 0;
+
+				var colorCanvas = document.createElement( 'canvas' ),
+					colorCtx = colorCanvas.getContext( '2d' );
+
+				colorCanvas.width = imgSrc.width;
+				colorCanvas.height = imgSrc.height;
+				colorCtx.drawImage( imgSrc, 0, 0 );
+				var colorImageData = colorCtx.getImageData( 0, 0, colorCanvas.width, colorCanvas.height );
+				var colorP = 0;
+
+				var far = parseFloat( d.depth.far ),
+					near = parseFloat( d.depth.near );
+
+					console.log( d.depth.format, d.focus.focalDistance, near, far, img.width, img.height );
+
+				var geometry = new THREE.BufferGeometry();
+				var size = w * h;
+
+				geometry.addAttribute( 'position', Float32Array, size, 3 );
+				geometry.addAttribute( 'customColor', Float32Array, size, 3 );
+			
+				var positions = geometry.attributes.position.array;
+				var customColors = geometry.attributes.customColor.array;
+
+				adjustment = 10 * 960 / img.width
+				var ar = img.height / img.width;
+				var scale = new THREE.Vector3( 1, 1, 1 );
+				var v = new THREE.Vector3();
+				var ptr = 0;
+
+				var minZ = 100000000000, maxZ = -100000000000;
+				for( var y = 0; y < h; y++ ) {
+					for( var x = 0; x < w; x++ ) {
+						v.x = ( x - .5 * w ) / w;
+						v.y = ( y - .5 * h ) / h;
+						p = Math.round( ( ( -v.y + .5 ) ) * ( img.height - 1 ) ) * img.width * 4 + Math.round( ( ( v.x + .5 ) ) * ( img.width - 1 ) ) * 4;
+						var dn = imageData.data[ p ] / 255;
+						var rd = ( far * near ) / ( far - dn * ( far - near ) ); // RangeInverse
+						//var rd = ( 1 - dn ) * ( far - near ) + near; // RangeLinear
+						v.z = -rd ;
+						v.x *= rd * 1;
+						v.y *= rd * ar;
+						v.multiply( scale );
+
+						positions[ ptr + 0 ] = v.x;
+						positions[ ptr + 1 ] = v.y;
+						positions[ ptr + 2 ] = v.z;
+
+						customColors[ ptr + 0 ] = colorImageData.data[ p + 0 ] / 255;
+						customColors[ ptr + 1 ] = colorImageData.data[ p + 1 ] / 255;
+						customColors[ ptr + 2 ] = colorImageData.data[ p + 2 ] / 255;
+						
+						ptr += 3;
+
+						if( v.z < minZ ) minZ = v.z;
+						if( v.z > maxZ ) maxZ = v.z;
+
+					}
+				}
+
+				var offset = ( maxZ - minZ ) / 2;
+				for( var j = 0; j < positions.length; j+=3 ) {
+					positions[ j + 2 ] += offset;
+				}
+
+				var step = settings.quadSize;
+				var planeGeometry = new THREE.PlaneGeometry( 1, 1, Math.round( w / step ), Math.round( h / step ) );
+				ptr = 0;
+				for( var j = 0; j < planeGeometry.vertices.length; j++ ) {
+					v = planeGeometry.vertices[ j ];
+					p = Math.round( ( ( -v.y + .5 ) ) * ( img.height - 1 ) ) * img.width * 4 + Math.round( ( ( v.x + .5 ) ) * ( img.width - 1 ) ) * 4;
+					var dn = imageData.data[ p ] / 255;
+					//console.log( v, p, dn );
+					var rd = ( far * near ) / ( far - dn * ( far - near ) ); // RangeInverse
+					//var rd = ( 1 - dn ) * ( far - near ) + near; // RangeLinear
+					v.z = -rd ;
+					v.x *= rd * 1;
+					v.y *= rd * ar;
+					v.multiply( scale );
+					v.z += offset;
+				}
+
+				planeGeometry.computeFaceNormals();
+				planeGeometry.computeVertexNormals();
+
+				var tex = new THREE.Texture( imgSrc );
+				tex.needsUpdate = true;
+				meshSolid = new THREE.Mesh( planeGeometry, new THREE.MeshBasicMaterial( { map: tex, wireframe: false, side: THREE.DoubleSide }) );
+				meshSolid.scale.set( adjustment, adjustment, adjustment );
+				scene.add( meshSolid );
+				if( renderMode == 2 ) meshSolid.visible = false; 
+
+				meshPoint = new THREE.ParticleSystem( geometry, material );
+				meshPoint.scale.set( adjustment, adjustment, adjustment );
+				meshPoint.frustumCulled = false;
+				scene.add( meshPoint );
+				if( renderMode == 1 ) meshPoint.visible = false; 
+				
+				nDistance = parseFloat( d.focus.focalDistance ) + offset * adjustment;
+				nFov = 1 * Math.atan2( .5 * adjustment * near, d.focus.focalDistance ) * 180 / Math.PI;
+				material.uniforms.size.value = settings.pointSize * nDistance;
+				nDisplacement = 1;
+
+				camera.near = .001;
+				camera.far = ( far + ( maxZ - minZ ) ) * adjustment;
+				camera.updateProjectionMatrix();
+
+				nLat = 0;
+				nLon = 90;
+
+				showLoading( false );
+
+			}
+
+			imgSrc.src = 'data:' + d.image.mime + ';base64,' + d.image.data;
+
+		}
+
+		img.src = 'data:' + d.depth.mime + ';base64,' + d.depth.data;
+
+	}
+
+	function exportMtl() {
+
+		return 'newmtl initialShadingGroup\nillum 4\nKd 0.00 0.00 0.00\nKa 0.00 0.00 0.00\nTf 1.00 1.00 1.00\nmap_Kd diffuse.jpg\nNi 1.00\n';
+
+	}
+
+	function zipBlob(filename, blob, callback) {
+		zip.createWriter(new zip.BlobWriter("application/zip"), function(zipWriter) {
+			zipWriter.add(filename, new zip.BlobReader(blob), function() {
+				zipWriter.close(callback);
+			});
+			}, onerror);
+	}
+
+
+	function exportToSketchfab() {
+
+		var fd = new FormData();
+
+		fd.append('token', settings.sketchfabToken );
+		var exporter = new THREE.OBJExporter();
+		var output = exporter.parse( meshSolid.geometry );
+		
+		fd.append('fileModel', new Blob([ output ]));
+		fd.append('filenameModel', 'model.obj');
+
+		var xhr = new XMLHttpRequest();
+		xhr.open('POST', 'https://api.sketchfab.com/v1/models');
+
+		var result = function () {
+			var res = JSON.parse(xhr.responseText);
+			console.log(res);
+			if (!res.success)
+				showMessage( 'Sketchfab upload error:<br/>' + res.error );
+			else
+				showMessage( 'Upload success: ID is ' + res.result.id );
+		};
+		xhr.addEventListener('load', result, true);
+		xhr.send(fd);
+
+	};
+
+	function exportZipToSketchfab( zip ) {
+
+		setLoadingText( 'Uploading...' );
+		showLoading( true );
+
+		var fd = new FormData();
+
+		fd.append('token', settings.sketchfabToken );
+		
+		fd.append('fileModel', zip );
+		fd.append('filenameModel', 'model.zip');
+		fd.append('title', 'Lens Blur model');
+		fd.append('description', 'Model created automatically from an Android Lens Blur image via\nhttp://www.clicktorelease.com/code/depth-player/')
+		fd.append('tags', 'lens blur, android');
+
+		function updateProgress( e ) {
+
+			if (e.lengthComputable) {
+				setProgress( e.loaded / e.total );
+			} else {
+				setProgress( 0 );
+			}
+
+		}
+
+		var result = function () {
+			var res = JSON.parse(xhr.responseText);
+			console.log(res);
+			if (!res.success) {
+				showMessage( 'Sketchfab upload error: <span class="error">' + res.error + '</span>' );
+				showLoading( false );
+			} else {
+				var url = 'http://sketchfab.com/models/' + res.result.id;
+				showMessage( 'Upload success: <a href="' + url + '" class="inside">See it here</a>' );
+				showLoading( false );
+			}
+		};
+		
+		var xhr = new XMLHttpRequest();
+		xhr.upload.addEventListener( 'progress', updateProgress, false);
+		//xhr.addEventListener( 'progress', updateProgress, false);
+		xhr.addEventListener( 'load', result, true);
+
+		xhr.open( 'POST', 'https://api.sketchfab.com/v1/models', false );
+		xhr.send( fd );
+
+	};
+
+	function onError( msg ) {
+		showLoading( false );
+		showMessage( msg );
+	}
+
+	function handleFileSelect(evt) {
+
+		setLoadingText( 'Loading...' );
+		showLoading( true );
+		var files = evt.target.files;
+
+		for (var i = 0, f; f = files[i]; i++) {
+
+			if (!f.type.match('image.*')) {
+				continue;
+			}
+
+			var reader2 = new FileReader();
+			var file = f;
+			reader2.onload = function( e ) {
+
+				var reader = new FileReader();
+				reader.onload = function(theFile) {
+					d.parseFile( reader.result, setImg, onError );
+				}
+				reader.readAsArrayBuffer( file );
+			}
+
+			reader2.readAsDataURL( file );
+
+		}
+
+	}
+
+	var ul = document.getElementById( 'imageList' );
+	images.forEach( function( e ) {
+		var li = document.createElement( 'li' );
+		li.style.backgroundImage = 'url( assets/' + e + '-thumb.png)';
+		li.addEventListener( 'click', function( ev ) {
+			setLoadingText( 'Loading...' );
+			showLoading( true );
+			var src = 'assets/' + e + '.jpg';
+			d.loadFile( src, setImg, onError );
+			ev.preventDefault();
+		})
+		ul.appendChild( li );
+	} );
+
+	document.getElementById( 'uploadFile' ).addEventListener( 'change', handleFileSelect, false);
+
+	var sL = new ShaderLoader()
+	sL.add( 'particle-vs', 'shaders/particle-vs.glsl' );
+	sL.add( 'particle-fs', 'shaders/particle-fs.glsl' );
+	sL.onLoaded( function() {
+
+		material = new THREE.ShaderMaterial( {
+			attributes: {
+				customColor: { type: 'c', value: null }
+			},
+			uniforms: {
+				size: { type: 'f', value: 1 },
+				displacement: { type: 'f', value: 0 }
+			},
+			vertexShader: this.get( 'particle-vs' ),
+			fragmentShader: this.get( 'particle-fs' )
+		} );
+
+		setLoadingText( 'Loading...' );
+		showLoading( true );
+		var src = 'assets/window.jpg';
+		d.loadFile( src, setImg, onError );
+
+	} );
+	sL.load();
+
+	function b64toBlob(b64Data, contentType, sliceSize) {
+	    contentType = contentType || '';
+	    sliceSize = sliceSize || 512;
+
+	    var byteCharacters = atob(b64Data);
+	    var byteArrays = [];
+
+	    for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+	        var slice = byteCharacters.slice(offset, offset + sliceSize);
+
+	        var byteNumbers = new Array(slice.length);
+	        for (var i = 0; i < slice.length; i++) {
+	            byteNumbers[i] = slice.charCodeAt(i);
+	        }
+
+	        var byteArray = new Uint8Array(byteNumbers);
+
+	        byteArrays.push(byteArray);
+	    }
+
+	    var blob = new Blob(byteArrays, {type: contentType});
+	    return blob;
+	}
+
+	document.getElementById( 'exportOBJ' ).addEventListener( 'click', function( e ) {
+		
+		setLoadingText( 'Exporting...' );
+		showLoading( true );
+
+		var exporter = new THREE.OBJExporter( );
+		var output = exporter.parse( meshSolid.geometry, false );
+		var blobModel = new Blob( [ output ], { type: 'text/plain' } );
+		var url = URL.createObjectURL( blobModel );
+
+		this.setAttribute( 'download', 'model-' + Date.now() + '.obj' );
+		this.setAttribute( 'href', url );
+
+		showLoading( false );
+
+	} );
+
+	document.getElementById( 'uploadSketchfab' ).addEventListener( 'click', function( e ) {
+		
+		if( settings.sketchfabToken == '' ) {
+			showMessage( 'Please enter you <b>Sketchfab</b> API token on the <b>Settings</b>' );
+			return;
+		}
+
+		setLoadingText( 'Exporting...' );
+		showLoading( true );
+
+		var exporter = new THREE.OBJExporter();
+		var output = exporter.parse( meshSolid.geometry, true );
+		var blobModel = new Blob( [ output ], { type: 'text/plain' } );
+		var blobMaterial = new Blob( [ exportMtl() ], { type: 'text/plain' } );
+		var blobImage = b64toBlob( d.image.data, d.image.mime );
+
+		var a = this;
+		var zipWriter;
+		var part = 0;
+
+		function onProgress( a, b ) {
+			setProgress( ( a / b ) / 3 + part / 3 );
+			console.log("current", a, "end", b);
+		}
+
+		zip.createWriter( new zip.BlobWriter(), function(writer) {
+			zipWriter = writer;
+
+			setLoadingText( 'Compressing...' );
+			
+			zipWriter.add( 'model.obj', 
+				new zip.BlobReader( blobModel ), function() {
+				
+				part++;	
+				zipWriter.add( 'model.mtl',
+					new zip.BlobReader( blobMaterial ), function() {
+
+						part++;
+						zipWriter.add( 'diffuse.jpg',
+							new zip.BlobReader( blobImage ), function() {
+
+								zipWriter.close( function( blob ) {
+									var name = 'model.zip';
+									var url = URL.createObjectURL( blob );
+									
+									exportZipToSketchfab( blob );
+
+								/*var downloader = document.getElementById( 'downloader' );
+									var a = document.createElement( 'a' );
+									a.setAttribute( 'download', name );
+									a.setAttribute( 'href', url );
+									a.textContent = 'Download ' + name;
+									var li = document.createElement( 'li' );
+									li.appendChild( a );
+									downloader.appendChild( li );*/
+
+								} );
+
+						}, onProgress );
+
+					}, onProgress );
+
+			}, onProgress);
+
+		});
+
+		e.preventDefault();
+		
+	});
+
+	onResize();
+	render();
+
+}
+
+</script>
+		
+	</body>
+</html>

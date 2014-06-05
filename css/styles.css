@@ -1,0 +1,110 @@
+*{
+	font-family: 'roboto condensed', tahoma;
+	font-size:13px;
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	text-shadow: 0 -1px 0 rgba( 0,0,0, .6);
+}
+body {
+	color: #ffffff;
+	text-align: left;
+	font-weight: 100;
+	background-color: #111;
+	margin: 0px;
+	overflow: hidden;
+	background: #7d7e7d; /* Old browsers */
+background: -moz-radial-gradient(center, ellipse cover,  #7d7e7d 0%, #0e0e0e 100%); /* FF3.6+ */
+background: -webkit-gradient(radial, center center, 0px, center center, 100%, color-stop(0%,#7d7e7d), color-stop(100%,#0e0e0e)); /* Chrome,Safari4+ */
+background: -webkit-radial-gradient(center, ellipse cover,  #7d7e7d 0%,#0e0e0e 100%); /* Chrome10+,Safari5.1+ */
+background: -o-radial-gradient(center, ellipse cover,  #7d7e7d 0%,#0e0e0e 100%); /* Opera 12+ */
+background: -ms-radial-gradient(center, ellipse cover,  #7d7e7d 0%,#0e0e0e 100%); /* IE10+ */
+background: radial-gradient(ellipse at center,  #7d7e7d 0%,#0e0e0e 100%); /* W3C */
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#7d7e7d', endColorstr='#0e0e0e',GradientType=1 ); /* IE6-9 fallback on horizontal gradient */
+}
+a{ pointer-events: auto;}
+h1{ font-size: 16px;}
+a.inside{ color: #fff; font-style: normal; text-decoration: none; background-color: rgba( 255,255,255,.1); padding: 3px;}
+a.inside:hover{ background-color: rgba( 255,255,255,.4);}
+.rs-base{ display: none;}
+#uploadFile{ }
+.title{ position: absolute; left: 10px; top: 10px ; z-index: 100; right: 60%;}
+#log{ position: absolute; width: 600px; top: 10px; right: 10px; bottom: 10px; overflow: scroll; color: #eee; word-wrap:break-word; display :none;}
+#container{ position: absolute; left: 0; top: 0; right: 0; bottom: 0 ;}
+#loading{ position: absolute; left: 0; width: 100%; right: 0; height: 50px; background-color: rgba( 0,0,0,.6); color: white; text-align: center; line-height: 50px; transition: opacity 250ms ease-out; opacity: 1; pointer-events: none; z-index: 200;}
+#loading p{ position: absolute; left: 0; top: 0; right: 0; bottom: 0; text-align: center; line-height: 50px; z-index: 300;}
+#message{ position: absolute; left: 0; top: 0; width: 100%; right: 0; height: 60px; background-color: rgba( 0,0,0,.6); color: white; text-align: center; line-height: 50px; transition: opacity 250ms ease-out; opacity: 0; pointer-events: none; z-index: 200;}
+#message p{ position: absolute; left: 0; top: 10px; right: 0; text-align: center; line-height: 1em;}
+#message a.close{ position: absolute; left: 50%; bottom: 10px; width: 20em; margin-left: -10em; text-align: center; line-height: 1em; pointer-events: auto; padding: 5px;}
+#progress{ position: absolute; left: 0; top: 0; bottom: 0; background-color: #b70000; transition: width 100ms ease-out;}
+#tools{ width: 350px;}
+#panel{ padding: 20px; border-left: 10px solid rgba( 0, 0, 0, .2 );}
+#panel p{ clear:both; padding: 5px 0; font-style: italic;}
+#panel ul{ font-style: italic;}
+#panel div{ padding-top: 10px; padding-bottom: 10px; border-top: 1px solid rgba( 255,255,255,.2 ); border-bottom: 1px solid rgba( 0, 0, 0, .2 );}
+.custom-file-input {
+color: transparent;
+width: 100%;
+}
+.custom-file-input::-webkit-file-upload-button {
+visibility: hidden;
+}
+.custom-file-input::before {
+content: 'Select a Lens Blur image';
+}
+.custom-file-input::before, .button{
+color: black;
+display: inline-block;
+background: -webkit-linear-gradient(top, #e9e9e9, #c9c9c9);
+background: -moz-linear-gradient(top, #e9e9e9, #c9c9c9);
+border: 1px solid #999;
+border-radius: 3px;
+padding: 5px 8px;
+outline: none;
+white-space: nowrap;
+-webkit-user-select: none;
+cursor: pointer;
+text-shadow: 1px 1px #fff;
+font-weight: 700;
+font-size: 10pt;
+text-decoration: none;
+font-weight: 600;
+font-size: 12px;
+margin-bottom: 5px;
+}
+.custom-file-input::before:hover, .button:hover{
+background: -webkit-linear-gradient(top, #ffffff, #dddddd);
+background: -moz-linear-gradient(top, #ffffff, #dddddd);
+color: #000;
+text-shadow: 0 1px 0 rgba( 255,255,255,.6);
+}
+.custom-file-input:hover::before {
+border-color: black;
+}
+.custom-file-input:active {
+outline: 0;
+}
+.custom-file-input:active::before {
+background: -webkit-linear-gradient(top, #e3e3e3, #f9f9f9); 
+}
+#imageList{ list-style-type: none ; float:left;}
+#imageList li{ width: 64px; height: 64px; float: left; background-size: cover; background-position: 50% 50%; cursor: pointer; border: 4px solid white; margin-right: 1px;}
+.selector{ width: 350px;}
+.selector p{ margin: 5px 0;}
+.selector ul{ float: left; }
+.ui{ transition: opacity 250ms ease-out }
+.hidden{ pointer-events:none; opacity: 0;}
+#panel{ position: absolute; right: 0; top: 0; bottom: 0; width: 380px; overflow: auto; background-color: rgba( 255, 158, 54, .4 ); z-index: 10;}
+#panel ul{ list-style-type: none; padding: 10px 0;}
+#panel li{ position: relative; padding: 3px 0;}
+#panel li input{ position: absolute; width: 50%; right: 40px;}
+#panel li span{ position: absolute; right: 0; padding: 0 5px;}
+h1.title{ position: absolute; left: 10px; top: 10px;}
+span.error{ color: #b70000;}
+@media only screen 
+and (max-width: 640px) {
+body{ font-size: 11px; line-height: 1.5em;}
+h1{ margin-bottom: .5em;}
+.title{ right: 10px;}
+#panel{ position: absolute; left: 0; top: 50%; right: 0; bottom: 0; width: 100%; border-top: 10px solid rgba( 0, 0, 0, .2 ); border-left: none;}
+}
