@@ -12,7 +12,7 @@ Read about this in [Creating Android Lens Blur Depth Viewer](http://www.clicktor
 Credits
 -------
 
-Coded using [three.js](http://www.threejs.org), [zip.js](gildas-lormeau.github.io/zip.js), [StackBlur](http://quasimondo.com/StackBlurDemo.html), [LensBlurDepthExtractor.js](https://github.com/spite/android-lens-blur-depth-extractor) and a modified version of THREE.OBJExporter.js to export models.
+Coded using [three.js](http://www.threejs.org), [zip.js](http://gildas-lormeau.github.io/zip.js), [StackBlur](http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html), [LensBlurDepthExtractor.js](https://github.com/spite/android-lens-blur-depth-extractor) and a modified version of THREE.OBJExporter.js to export models.
 
 Images are all by me, taken with a Nexus5.
 License
